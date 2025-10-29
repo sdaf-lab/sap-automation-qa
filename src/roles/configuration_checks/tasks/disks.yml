@@ -96,7 +96,7 @@
 
         - name:                        "SDAF: Create ARM deployment rescue - perform az login"
           ansible.builtin.command: >-
-                                       az login --identity --client-id {{ azure_client_id }}--allow-no-subscriptions --output none
+                                       az login --identity --client-id {{ azure_client_id }} --allow-no-subscriptions --output none
           changed_when:                false
 
         - name:                        "SDAF: Create ARM deployment rescue - perform az login"
