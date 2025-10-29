@@ -84,18 +84,35 @@
       ansible.builtin.set_fact:
         azure_disk_names:               "{{ disks_metadata.json | map(attribute='name') | list }}"
 
-    - name:                             Collect detailed azure disks data (loop per disk defined in azure_disk_names)
+    - name:                            Execute tasks on localhost to collect azure disk details
+      delegate_to:                     localhost
       when:
-                                        - azure_disk_names is defined
-                                        - azure_disk_names | length > 0
-      register:                         azure_disks_metadata_results
-      loop:                             "{{ azure_disk_names }}"
-      delegate_to:                      localhost
-      ansible.builtin.shell: |
-                                        az disk show --name {{ item }} \
-                                        --subscription {{ compute_metadata.json.compute.subscriptionId }} \
-                                        --resource-group {{ compute_metadata.json.compute.resourceGroupName }} \
-                                        --query "{name:name, sku:sku.name, size:sizeGb, encryption:encryption.type, iops:diskIOPSReadWrite, mbps:diskMBpsReadWrite, size:diskSizeGB, tier:tier}" --output json
+                                       - azure_disk_names is defined
+                                       - azure_disk_names | length > 0
+      block:
+        - name:                        "SDAF: Lookup AZURE_CLIENT_ID from environment variables and set fact"
+          ansible.builtin.set_fact:
+            azure_client_id:           "{{ lookup('env', 'AZURE_CLIENT_ID') }}"
+
+        - name:                        "SDAF: Create ARM deployment rescue - perform az login"
+          ansible.builtin.command: >-
+                                       az login --identity --client-id {{ azure_client_id }}--allow-no-subscriptions --output none
+          changed_when:                false
+
+        - name:                        "SDAF: Create ARM deployment rescue - perform az login"
+          ansible.builtin.command: >-
+                                       az account set --subscription {{ compute_metadata.json.compute.subscriptionId }} --output none
+          changed_when:                false
+
+        - name:                        Collect detailed azure disks data (loop per disk defined in azure_disk_names)
+          register:                    azure_disks_metadata_results
+          loop:                        "{{ azure_disk_names }}"
+          delegate_to:                 localhost
+          ansible.builtin.shell: |
+                                       az disk show --name {{ item }} \
+                                       --subscription {{ compute_metadata.json.compute.subscriptionId }} \
+                                       --resource-group {{ compute_metadata.json.compute.resourceGroupName }} \
+                                       --query "{name:name, sku:sku.name, size:sizeGb, encryption:encryption.type, iops:diskIOPSReadWrite, mbps:diskMBpsReadWrite, size:diskSizeGB, tier:tier}" --output json
 
     - name:                             Debug azure disks data collected
       when:                             azure_disks_metadata_results is defined
