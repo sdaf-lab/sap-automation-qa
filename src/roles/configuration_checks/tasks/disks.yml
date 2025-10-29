@@ -90,16 +90,20 @@
                                        - azure_disk_names is defined
                                        - azure_disk_names | length > 0
       block:
-        - name:                        "SDAF: Lookup AZURE_CLIENT_ID from environment variables and set fact"
+        - name:                        "Lookup AZURE_CLIENT_ID from environment variables and set fact"
           ansible.builtin.set_fact:
             azure_client_id:           "{{ lookup('env', 'AZURE_CLIENT_ID') }}"
 
-        - name:                        "SDAF: Create ARM deployment rescue - perform az login"
+        - name:                        "Perform az login when client id is available"
+          when:
+                                       - azure_client_id is defined
+                                       - azure_client_id | type_debug != 'NoneType'
+                                       - azure_client_id | length > 0
           ansible.builtin.command: >-
                                        az login --identity --client-id {{ azure_client_id }} --allow-no-subscriptions --output none
           changed_when:                false
 
-        - name:                        "SDAF: Create ARM deployment rescue - perform az login"
+        - name:                        "Set the subscription context for azure cli commands"
           ansible.builtin.command: >-
                                        az account set --subscription {{ compute_metadata.json.compute.subscriptionId }} --output none
           changed_when:                false
